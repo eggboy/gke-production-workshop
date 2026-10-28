@@ -1,0 +1,55 @@
+# Attach the storefront to the platform team's shared Gateway (gateway-infra/external-gateway).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: frontend
+spec:
+  parentRefs:
+  - name: external-gateway
+    namespace: gateway-infra
+    sectionName: https             # HTTPS listener only (HTTP is redirected by the platform team)
+  rules:
+  - backendRefs:
+    - name: frontend
+      port: 80
+---
+# The Gateway does not infer health checks from readiness probes: point the load balancer at /_healthz.
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: frontend
+spec:
+  default:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    config:
+      type: HTTP
+      httpHealthCheck:
+        portSpecification: USE_SERVING_PORT
+        requestPath: /_healthz
+  targetRef:
+    group: ""
+    kind: Service
+    name: frontend
+---
+# Backend service settings: Cloud Armor WAF policy, access logging and connection draining.
+# IMPORTANT: a GCPBackendPolicy without a "logging" section disables load balancer access logs,
+# which would hide every Cloud Armor decision.
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: frontend
+spec:
+  default:
+    securityPolicy: CLOUD_ARMOR_POLICY_NAME   # replaced with ${ARMOR_POLICY} by kustomization.yaml
+    logging:
+      enabled: true
+      sampleRate: 1000000                     # log 100% of requests
+    connectionDraining:
+      drainingTimeoutSec: 10                  # requests in flight when a Pod is removed get 10 seconds to finish
+  targetRef:
+    group: ""
+    kind: Service
+    name: frontend

@@ -1,0 +1,44 @@
+# Negative test (rendered with envsubst for ${AR_PATH}): the same SecretProviderClass, but the Pod runs as
+# the namespace's "default" ServiceAccount, which has NOT been granted access to the secret.
+# Expected result: the volume mount fails with PermissionDenied and the Pod never starts.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unauthorized-reader
+  namespace: secrets-demo
+spec:
+  serviceAccountName: default
+  nodeSelector:
+    iam.gke.io/gke-metadata-server-enabled: "true"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: ${AR_PATH}/busybox:1.38.0
+    command: ["sleep", "3600"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        memory: 32Mi
+    volumeMounts:
+    - name: secrets
+      mountPath: /var/secrets
+      readOnly: true
+  volumes:
+  - name: secrets
+    csi:
+      driver: secrets-store-gke.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: db-credentials

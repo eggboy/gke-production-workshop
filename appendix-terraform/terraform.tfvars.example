@@ -1,0 +1,5 @@
+# Copy this file to terraform.tfvars and use the same values as section 1 of
+# env.sh. Step 4 of the README creates terraform.tfvars from env.sh for you.
+project_id = "your-project-id"
+region     = "asia-southeast1"
+prefix     = "gkews"

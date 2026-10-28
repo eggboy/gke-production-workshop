@@ -1,0 +1,52 @@
+# PodDisruptionBudgets for the stateless Online Boutique services (Lab 09).
+# During voluntary disruptions (node drains, upgrades), at least one replica of each service stays up.
+# redis-cart is a single-replica in-memory store: it can't be protected by a PDB (see the lab text).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: frontend, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: frontend}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: adservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: adservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: cartservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: cartservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: checkoutservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: checkoutservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: currencyservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: currencyservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: emailservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: emailservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: paymentservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: paymentservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: productcatalogservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: productcatalogservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: recommendationservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: recommendationservice}}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: shippingservice, namespace: onlineboutique}
+spec: {minAvailable: 1, selector: {matchLabels: {app: shippingservice}}}

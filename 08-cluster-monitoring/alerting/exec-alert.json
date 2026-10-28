@@ -1,0 +1,27 @@
+{
+  "displayName": "GKE: command executed in a container (kubectl exec)",
+  "documentation": {
+    "content": "Someone ran `kubectl exec` against a Pod in cluster `${CLUSTER_NAME}`. Open the audit log entry to see who, which Pod and which command, and confirm the activity was authorized.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Kubernetes audit log: pods/exec",
+      "conditionMatchedLog": {
+        "filter": "resource.type=\"k8s_cluster\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND log_id(\"cloudaudit.googleapis.com/activity\") AND protoPayload.methodName=~\"io.k8s.core.v1.pods.exec.*\"",
+        "labelExtractors": {
+          "principal": "EXTRACT(protoPayload.authenticationInfo.principalEmail)",
+          "pod": "EXTRACT(protoPayload.resourceName)"
+        }
+      }
+    }
+  ],
+  "alertStrategy": {
+    "notificationRateLimit": {
+      "period": "300s"
+    },
+    "autoClose": "1800s"
+  },
+  "severity": "WARNING"
+}

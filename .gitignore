@@ -1,0 +1,18 @@
+# Generated / sensitive files created while running the labs
+*.key
+*.crt
+*.pem
+tls/
+05-deploy-app/online-boutique/kustomization.yaml
+**/rendered/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.DS_Store
+
+# Added by scripts/sanitize.sh
+env.sh.local
+kubeconfig*
+*credentials*.json
+*service-account*.json

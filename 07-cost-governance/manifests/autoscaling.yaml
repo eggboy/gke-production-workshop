@@ -1,0 +1,62 @@
+# Cost governance manifests (Lab 07). Apply directly with kubectl (no variables to substitute).
+# 1. VerticalPodAutoscalers in recommendation-only mode ("Off"): they observe usage and recommend
+#    requests, but never change running Pods.
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: frontend
+  namespace: onlineboutique
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  updatePolicy:
+    updateMode: "Off"
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: cartservice
+  namespace: onlineboutique
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cartservice
+  updatePolicy:
+    updateMode: "Off"
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: recommendationservice
+  namespace: onlineboutique
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: recommendationservice
+  updatePolicy:
+    updateMode: "Off"
+---
+# 2. HorizontalPodAutoscaler: run at least 2 frontend replicas (availability) and scale out on CPU.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend
+  namespace: onlineboutique
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60

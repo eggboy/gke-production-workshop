@@ -1,0 +1,85 @@
+# Online Boutique load generator (Lab 07), rendered with envsubst for ${AR_PATH} and ${OB_VERSION}.
+# Locust simulates shoppers browsing and checking out, from inside the cluster (frontend:80, not through
+# the load balancer). The Lab 05 overlay leaves it out, so it runs, and logs, only while Lab 07 needs traffic:
+#   start: envsubst '${AR_PATH} ${OB_VERSION}' < 07-cost-governance/manifests/loadgenerator.yaml | kubectl apply -f -
+#   stop:  envsubst '${AR_PATH} ${OB_VERSION}' < 07-cost-governance/manifests/loadgenerator.yaml | kubectl delete -f -
+# Same workload as the upstream v0.10.7 release, with the changes the cluster's guardrails require:
+# images from your Artifact Registry (Binary Authorization) and a seccomp profile (restricted Pod Security).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: loadgenerator
+  namespace: onlineboutique
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgenerator
+  namespace: onlineboutique
+  labels:
+    app: loadgenerator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadgenerator
+  template:
+    metadata:
+      labels:
+        app: loadgenerator
+    spec:
+      serviceAccountName: loadgenerator
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      # Wait until the storefront answers before generating load.
+      - name: frontend-check
+        image: ${AR_PATH}/busybox:1.38.0
+        command:
+        - /bin/sh
+        - -exc
+        - |
+          for i in $(seq 1 12); do
+            STATUSCODE=$(wget --server-response http://${FRONTEND_ADDR} 2>&1 | awk '/^  HTTP/{print $2}')
+            if [ "$STATUSCODE" = "200" ]; then echo "Frontend is reachable."; exit 0; fi
+            echo "Attempt $i: frontend not reachable yet (status: ${STATUSCODE:-none})"; sleep 10
+          done
+          echo "Failed to reach frontend after 12 attempts."; exit 1
+        env:
+        - name: FRONTEND_ADDR
+          value: "frontend:80"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          privileged: false
+          readOnlyRootFilesystem: true
+      containers:
+      - name: main
+        image: ${AR_PATH}/loadgenerator:${OB_VERSION}
+        env:
+        - name: FRONTEND_ADDR
+          value: "frontend:80"
+        - name: USERS          # concurrent simulated shoppers; Lab 07 raises it for the HPA test
+          value: "10"
+        - name: RATE           # new shoppers started per second until USERS is reached
+          value: "1"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          privileged: false
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            cpu: 300m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi

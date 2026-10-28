@@ -1,0 +1,27 @@
+{
+  "displayName": "Cloud Armor: requests blocked at the edge",
+  "documentation": {
+    "content": "Cloud Armor policy `${ARMOR_POLICY}` blocked requests to the storefront. Review the load balancer logs (`jsonPayload.enforcedSecurityPolicy`) to see which rule matched and where the traffic came from.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Load balancer log: request denied by Cloud Armor",
+      "conditionMatchedLog": {
+        "filter": "resource.type=\"http_load_balancer\" AND jsonPayload.enforcedSecurityPolicy.name=\"${ARMOR_POLICY}\" AND jsonPayload.enforcedSecurityPolicy.outcome=\"DENY\"",
+        "labelExtractors": {
+          "rule_priority": "EXTRACT(jsonPayload.enforcedSecurityPolicy.priority)",
+          "client_ip": "EXTRACT(httpRequest.remoteIp)"
+        }
+      }
+    }
+  ],
+  "alertStrategy": {
+    "notificationRateLimit": {
+      "period": "300s"
+    },
+    "autoClose": "1800s"
+  },
+  "severity": "WARNING"
+}

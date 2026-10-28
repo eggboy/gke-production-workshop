@@ -1,0 +1,111 @@
+# ValidatingAdmissionPolicies (Kubernetes GA since 1.30): guardrails evaluated in-process by the API server
+# with CEL expressions - no webhook, no extra components. Bound to every namespace that has a "team" label
+# (onlineboutique, dev, secrets-demo, gateway-infra); system namespaces are not affected.
+# ---------------------------------------------------------------------------------------------------------
+# 1. Images must use an explicit tag or digest, never ":latest".
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: require-pinned-image-tags
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["deployments", "statefulsets", "daemonsets"]
+  variables:
+  - name: podSpec
+    expression: "object.kind == 'Pod' ? object.spec : object.spec.template.spec"
+  - name: containers
+    expression: "variables.podSpec.containers + (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers : [])"
+  validations:
+  - expression: >-
+      variables.containers.all(c,
+        c.image.contains('@sha256:') ||
+        (c.image.split('/')[size(c.image.split('/')) - 1].contains(':') && !c.image.endsWith(':latest')))
+    message: "Every container image must be pinned to a tag or digest, and ':latest' is not allowed."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: require-pinned-image-tags
+spec:
+  policyName: require-pinned-image-tags
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - {key: team, operator: Exists}
+---
+# 2. Workload templates must declare CPU/memory requests and a memory limit.
+#    (Pods created without them still get LimitRange defaults; this makes the owner state them explicitly.)
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: require-resource-requests
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["deployments", "statefulsets", "daemonsets"]
+  validations:
+  - expression: >-
+      object.spec.template.spec.containers.all(c,
+        has(c.resources) && has(c.resources.requests) &&
+        'cpu' in c.resources.requests && 'memory' in c.resources.requests &&
+        has(c.resources.limits) && 'memory' in c.resources.limits)
+    messageExpression: "'Workload ' + object.metadata.name + ': every container must set resources.requests.cpu, resources.requests.memory and resources.limits.memory.'"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: require-resource-requests
+spec:
+  policyName: require-resource-requests
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - {key: team, operator: Exists}
+---
+# 3. No public load balancers from inside the cluster: LoadBalancer Services must be internal.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: deny-external-load-balancers
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["services"]
+  validations:
+  - expression: >-
+      object.spec.type != 'LoadBalancer' ||
+      (has(object.metadata.annotations) &&
+       'networking.gke.io/load-balancer-type' in object.metadata.annotations &&
+       object.metadata.annotations['networking.gke.io/load-balancer-type'] == 'Internal')
+    message: "Public LoadBalancer Services are not allowed. Publish through the shared Gateway, or add the annotation networking.gke.io/load-balancer-type: Internal."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: deny-external-load-balancers
+spec:
+  policyName: deny-external-load-balancers
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - {key: team, operator: Exists}

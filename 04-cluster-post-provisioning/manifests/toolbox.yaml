@@ -1,0 +1,33 @@
+# Small test Pod used in Labs 04 and 06 (rendered with envsubst for ${TOOLBOX_IMAGE}).
+# It complies with the "restricted" Pod Security Standard and carries the egress=internet label,
+# which the dev namespace's allow-internet-egress NetworkPolicy matches.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: toolbox
+  namespace: dev
+  labels:
+    app: toolbox
+    egress: internet
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: toolbox
+    image: ${TOOLBOX_IMAGE}
+    command: ["sleep", "86400"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        memory: 64Mi

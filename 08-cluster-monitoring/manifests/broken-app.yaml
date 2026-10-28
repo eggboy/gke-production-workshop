@@ -1,0 +1,41 @@
+# A deliberately broken Deployment used to trigger the "unavailable replicas" alert in Lab 08
+# (rendered with envsubst for ${AR_PATH}). The image tag does not exist, so the Pod never becomes ready.
+# It passes every guardrail (registry, pinned tag, resources, Pod Security) - it is just broken.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broken-app
+  namespace: onlineboutique
+  labels:
+    app: broken-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: broken-app
+  template:
+    metadata:
+      labels:
+        app: broken-app
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: app
+        image: ${AR_PATH}/busybox:0.0.0-does-not-exist
+        command: ["sleep", "3600"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            memory: 32Mi

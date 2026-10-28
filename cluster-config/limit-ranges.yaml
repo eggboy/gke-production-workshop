@@ -1,0 +1,55 @@
+# LimitRanges give every container sensible defaults if it does not declare requests/limits,
+# and cap the size of a single container.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: onlineboutique
+spec:
+  limits:
+  - type: Container
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    default:
+      cpu: 500m
+      memory: 512Mi
+    max:
+      cpu: "2"
+      memory: 2Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: dev
+spec:
+  limits:
+  - type: Container
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    default:
+      cpu: 500m
+      memory: 512Mi
+    max:
+      cpu: "1"
+      memory: 1Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: secrets-demo
+spec:
+  limits:
+  - type: Container
+    defaultRequest:
+      cpu: 50m
+      memory: 64Mi
+    default:
+      cpu: 200m
+      memory: 128Mi
+    max:
+      cpu: 500m
+      memory: 512Mi

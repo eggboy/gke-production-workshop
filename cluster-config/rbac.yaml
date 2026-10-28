@@ -1,0 +1,38 @@
+# Least-privilege access for application developers in the onlineboutique namespace.
+# IAM decides WHO can reach the cluster (for example roles/container.clusterViewer, which includes
+# container.clusters.connect for the DNS endpoint). Kubernetes RBAC decides WHAT they can do inside it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-developer
+  namespace: onlineboutique
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "services", "endpoints", "configmaps", "events", "serviceaccounts"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch", "update", "patch"]     # roll out new versions, scale
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["gateway.networking.k8s.io"]
+  resources: ["httproutes"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+# Deliberately NOT granted: secrets, pods/exec, pods/portforward, roles/rolebindings, namespaces.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-developers
+  namespace: onlineboutique
+subjects:
+# Replace with a real user, or a Google Group if Google Groups for RBAC is configured
+# (https://cloud.google.com/kubernetes-engine/docs/how-to/google-groups-rbac).
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: developer@example.com
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: app-developer

@@ -1,0 +1,130 @@
+# Kustomize overlay for Online Boutique - TEMPLATE.
+# Render it with the values from env.sh (only these three variables are substituted):
+#   envsubst '${AR_PATH} ${OB_VERSION} ${ARMOR_POLICY}' < kustomization.yaml.tmpl > kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: onlineboutique
+
+resources:
+- upstream/kubernetes-manifests.yaml   # unmodified upstream release
+- network-policies.yaml                # app-specific allow rules (on top of the default deny baseline)
+- gateway-route.yaml                   # HTTPRoute + health check + Cloud Armor attachment
+
+patches:
+# 1. Remove the public L4 "LoadBalancer" Service. The app is published only through the shared Gateway.
+- patch: |-
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: frontend-external
+    $patch: delete
+# 1b. Leave out the load generator. It simulates shoppers around the clock and fills the logs; Lab 07
+#     starts it from 07-cost-governance/manifests/loadgenerator.yaml when traffic is needed, then deletes it.
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: loadgenerator
+    $patch: delete
+- patch: |-
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: loadgenerator
+    $patch: delete
+# 2. The "restricted" Pod Security Standard requires a seccomp profile; upstream doesn't set one.
+- target:
+    kind: Deployment
+  patch: |-
+    - op: add
+      path: /spec/template/spec/securityContext/seccompProfile
+      value:
+        type: RuntimeDefault
+# 3. Attach your Cloud Armor policy to the frontend backend service.
+- target:
+    kind: GCPBackendPolicy
+    name: frontend
+  patch: |-
+    - op: replace
+      path: /spec/default/securityPolicy
+      value: ${ARMOR_POLICY}
+# 4. Graceful shutdown behind the load balancer: when a frontend Pod is stopped (rollout, node drain),
+#    it keeps serving for 20 seconds, so the load balancer removes it from the backends before it exits.
+- target:
+    kind: Deployment
+    name: frontend
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/lifecycle
+      value:
+        preStop:
+          sleep:
+            seconds: 20
+# 5. Spread the replicas of every Deployment across zones (required) and nodes (preferred). A regional
+#    cluster survives a zone outage only if each service has replicas in more than one zone.
+#    labelSelector + matchLabelKeys count only the Pods of the same Deployment revision: every Online
+#    Boutique Pod has an "app" label, and pod-template-hash is unique per revision.
+#    nodeTaintsPolicy: Honor ignores nodes the Pod can't run on anyway (cordoned nodes, the tainted
+#    Spot pool), so draining nodes or adding tainted pools doesn't block scheduling.
+- target:
+    kind: Deployment
+  patch: |-
+    - op: add
+      path: /spec/template/spec/topologySpreadConstraints
+      value:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: Exists
+        matchLabelKeys:
+        - pod-template-hash
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        nodeTaintsPolicy: Honor
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: Exists
+        matchLabelKeys:
+        - pod-template-hash
+
+# 6. Pull every image from your Artifact Registry repository (mirrored in Lab 02).
+images:
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
+  newName: ${AR_PATH}/adservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
+  newName: ${AR_PATH}/cartservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/checkoutservice
+  newName: ${AR_PATH}/checkoutservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/currencyservice
+  newName: ${AR_PATH}/currencyservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
+  newName: ${AR_PATH}/emailservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
+  newName: ${AR_PATH}/frontend
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/paymentservice
+  newName: ${AR_PATH}/paymentservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/productcatalogservice
+  newName: ${AR_PATH}/productcatalogservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/recommendationservice
+  newName: ${AR_PATH}/recommendationservice
+  newTag: ${OB_VERSION}
+- name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shippingservice
+  newName: ${AR_PATH}/shippingservice
+  newTag: ${OB_VERSION}
+- name: redis
+  newName: ${AR_PATH}/redis
+  newTag: 8.10.2-alpine

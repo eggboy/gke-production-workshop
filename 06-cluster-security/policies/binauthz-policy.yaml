@@ -1,0 +1,11 @@
+# Binary Authorization project policy (rendered with envsubst for ${PROJECT_ID} and ${AR_PATH}).
+# - Google-maintained system images (GKE add-ons) are exempt: globalPolicyEvaluationMode: ENABLE
+# - Images from YOUR Artifact Registry repository are allowed
+# - Everything else is blocked and the decision is written to Cloud Audit Logs
+name: projects/${PROJECT_ID}/policy
+globalPolicyEvaluationMode: ENABLE
+admissionWhitelistPatterns:
+- namePattern: ${AR_PATH}/*
+defaultAdmissionRule:
+  evaluationMode: ALWAYS_DENY
+  enforcementMode: ENFORCED_BLOCK_AND_AUDIT_LOG

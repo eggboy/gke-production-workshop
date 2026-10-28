@@ -1,0 +1,11 @@
+# Baseline configuration applied to the cluster in Lab 04 (kubectl apply -k cluster-config/).
+# In a GitOps setup these files would be reconciled by Config Sync (included with GKE Standard
+# at no additional cost) or Flux. Out of scope for this workshop.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- namespaces.yaml
+- resource-quotas.yaml
+- limit-ranges.yaml
+- rbac.yaml
+- network-policies.yaml

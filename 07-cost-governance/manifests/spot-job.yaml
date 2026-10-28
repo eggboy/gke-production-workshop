@@ -1,0 +1,46 @@
+# A fault-tolerant batch Job that runs on Spot VMs (rendered with envsubst for ${AR_PATH}).
+# Spot nodes can be preempted at any time, so only interruptible work belongs there.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spot-batch
+  namespace: dev
+spec:
+  completions: 3
+  parallelism: 3
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app: spot-batch
+    spec:
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 15
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"        # label GKE adds to every Spot node
+      tolerations:
+      - key: cloud.google.com/gke-spot           # taint we put on the Spot node pool
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: worker
+        image: ${AR_PATH}/busybox:1.38.0
+        command: ["/bin/sh", "-c", "echo \"Processing a batch item on $(hostname)\"; sleep 45; echo done"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 32Mi
+          limits:
+            memory: 64Mi

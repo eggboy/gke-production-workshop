@@ -1,0 +1,22 @@
+{
+  "displayName": "Online Boutique: Deployment has unavailable replicas",
+  "documentation": {
+    "content": "A Deployment in namespace `onlineboutique` of cluster `${CLUSTER_NAME}` has had unavailable replicas for 2 minutes. Check `kubectl get pods -n onlineboutique` and the Pod events.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Desired replicas minus available replicas > 0 for 2 minutes",
+      "conditionPrometheusQueryLanguage": {
+        "query": "sum by (deployment) (kube_deployment_spec_replicas{cluster=\"${CLUSTER_NAME}\", namespace=\"onlineboutique\"} - kube_deployment_status_replicas_available{cluster=\"${CLUSTER_NAME}\", namespace=\"onlineboutique\"}) > 0",
+        "duration": "120s",
+        "evaluationInterval": "60s"
+      }
+    }
+  ],
+  "alertStrategy": {
+    "autoClose": "1800s"
+  },
+  "severity": "ERROR"
+}

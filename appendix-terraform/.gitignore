@@ -1,0 +1,4 @@
+# Saved Terraform plans. The root .gitignore already ignores .terraform/, state
+# files and terraform.tfvars. The lock file (.terraform.lock.hcl) is committed on
+# purpose: it pins the provider checksums.
+*.tfplan

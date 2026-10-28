@@ -1,0 +1,18 @@
+# Pod-level egress control by domain name (GKE FQDN Network Policy, Dataplane V2).
+# The fqdn-client Pod may open HTTPS connections to ifconfig.me ONLY - even though the VPC firewall
+# policy allows both ifconfig.me and api.github.com for the whole cluster.
+apiVersion: networking.gke.io/v1alpha1
+kind: FQDNNetworkPolicy
+metadata:
+  name: allow-ifconfig-me
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels:
+      app: fqdn-client
+  egress:
+  - matches:
+    - name: "ifconfig.me"
+    ports:
+    - protocol: "TCP"
+      port: 443

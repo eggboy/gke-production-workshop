@@ -1,0 +1,62 @@
+# Test Pods for Lab 06 (rendered with envsubst for ${TOOLBOX_IMAGE}). All comply with "restricted".
+# fqdn-client: in dev, WITHOUT the egress=internet label -> only DNS is allowed until the FQDN policy applies.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fqdn-client
+  namespace: dev
+  labels:
+    app: fqdn-client
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: toolbox
+    image: ${TOOLBOX_IMAGE}
+    command: ["sleep", "86400"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+---
+# shop-client: a test Pod INSIDE onlineboutique (the same-namespace policy lets it reach the services).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shop-client
+  namespace: onlineboutique
+  labels:
+    app: shop-client
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: toolbox
+    image: ${TOOLBOX_IMAGE}
+    command: ["sleep", "86400"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        memory: 64Mi

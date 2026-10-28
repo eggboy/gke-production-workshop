@@ -1,0 +1,36 @@
+# Application-specific NetworkPolicies, added on top of the namespace's default-deny baseline
+# (cluster-config/network-policies.yaml). NetworkPolicies are additive: traffic is allowed if any policy allows it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+  - from:
+    - podSelector: {}        # any Pod in onlineboutique
+  egress:
+  - to:
+    - podSelector: {}        # any Pod in onlineboutique
+---
+# The global external Application Load Balancer reaches the frontend Pods directly (container-native
+# load balancing). Its proxies and health checks come from these Google ranges.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-from-load-balancer
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes: ["Ingress"]
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 35.191.0.0/16
+    - ipBlock:
+        cidr: 130.211.0.0/22
+    ports:
+    - protocol: TCP
+      port: 8080
