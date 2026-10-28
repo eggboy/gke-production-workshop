@@ -141,7 +141,7 @@ After committing, `cp env.sh.local env.sh` brings your values back.
 
 ## Validated Versions
 
-The labs were last validated end to end on **2026-10-23** with the versions below. Since then, Lab 03 dropped `--control-plane-egress=NONE` (it made the Binary Authorization check in Lab 06 fail open), Lab 04 step 6 and the Lab 06 break-glass text changed accordingly, and the load generator moved from Lab 05 to Lab 07. Those changes have not yet been validated on a fresh cluster.
+The labs were last validated end to end on **2026-10-23** with the versions below. 
 
 | Component | Version |
 |---|---|
@@ -153,27 +153,6 @@ The labs were last validated end to end on **2026-10-23** with the versions belo
 | Terraform (optional appendix) | Terraform 1.16.6, `hashicorp/google` and `hashicorp/google-beta` 8.7.0 |
 
 GKE evolves quickly. If a command behaves differently, check the [GKE release notes](https://cloud.google.com/kubernetes-engine/docs/release-notes).
-
-## Repository Layout
-
-```text
-.
-├── env.sh                         # all variables (edit PROJECT_ID / PREFIX / REGION)
-├── 01-cluster-design/             # design discussion (network, security, secrets)
-├── 02-cluster-pre-provisioning/   # VPC, NAT, firewall policy, IAM, KMS, Artifact Registry
-├── 03-cluster-provisioning/       # hardened cluster creation
-├── 04-cluster-post-provisioning/  # baseline, egress tests, Cloud Armor, TLS, Gateway
-├── cluster-config/                # Kubernetes baseline (namespaces, PSA, quotas, RBAC, network policies)
-├── 05-deploy-app/                 # Online Boutique overlay, Secret Manager demo
-├── 06-cluster-security/           # admission policies, Binary Authorization, FQDN policy, WAF tests
-├── 07-cost-governance/            # cost allocation, VPA, HPA, Spot
-├── 08-cluster-monitoring/         # logs, metrics, PromQL, alerting
-├── 09-day2-operations/            # upgrades, maintenance, node pool migration, backup and restore
-├── 10-validate-scenarios/         # requirements-to-technology matrix
-├── 99-cleanup/                    # teardown
-├── appendix-terraform/            # optional Terraform version of Labs 02-03
-└── scripts/                       # check-prereqs.sh, mirror-images.sh, show-zone-spread.sh, sanitize.sh
-```
 
 ## Acknowledgements
 
